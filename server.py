@@ -763,6 +763,21 @@ async def exit_subpatcher(ctx: Context):
 
 
 @mcp.tool()
+async def enter_parent_patcher(ctx: Context):
+    """Navigate up to the parent patcher that contains the current patcher.
+
+    This uses Max's parentpatcher API to go above the root level,
+    which is useful when the MCP agent runs inside an abstraction
+    and you need to operate on the parent patch that contains it.
+
+    Use exit_subpatcher to return back down.
+    """
+    maxmsp = ctx.request_context.lifespan_context.get("maxmsp")
+    cmd = {"action": "enter_parent_patcher"}
+    await maxmsp.send_command(cmd)
+
+
+@mcp.tool()
 async def get_patcher_context(ctx: Context):
     """Get information about the current patcher navigation context.
 

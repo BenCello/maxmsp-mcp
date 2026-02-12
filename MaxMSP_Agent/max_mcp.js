@@ -182,6 +182,9 @@ function anything() {
         case "exit_subpatcher":
             exit_subpatcher();
             break;
+        case "enter_parent_patcher":
+            enter_parent_patcher();
+            break;
         case "get_patcher_context":
             if (data.request_id) {
                 get_patcher_context(data.request_id);
@@ -679,6 +682,27 @@ function exit_subpatcher() {
     avoid_rect_called = false;
 
     post("Exited to parent patcher (depth: " + patcher_stack.length + ")\n");
+}
+
+function enter_parent_patcher() {
+    var parent = current_patcher.parentpatcher;
+    if (!parent) {
+        post("No parent patcher available - already at top level\n");
+        return;
+    }
+
+    // Push current context onto stack so we can return with exit_subpatcher
+    patcher_stack.push({
+        patcher: current_patcher,
+        name: "_parent"
+    });
+
+    current_patcher = parent;
+
+    // Reset preflight check
+    avoid_rect_called = false;
+
+    post("Entered parent patcher (depth: " + patcher_stack.length + ")\n");
 }
 
 function get_patcher_context(request_id) {
