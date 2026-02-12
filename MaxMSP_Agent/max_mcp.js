@@ -756,8 +756,8 @@ function get_objects_in_patch(request_id) {
     // var results = {"request_id": request_id, "results": patcher_dict}
     // outlet(1, "response", split_long_string(JSON.stringify(results, null, 2), 2000));
 
-    // use this if has v8:
-    outlet(2, "add_boxtext", request_id, JSON.stringify(patcher_dict, null, 0));
+    // use this if has v8 (chunked to avoid Max 32767 symbol limit):
+    send_chunked_to_v8("add_boxtext", request_id, JSON.stringify(patcher_dict, null, 0));
 }
 
 function get_objects_in_selected(request_id) {
@@ -772,12 +772,22 @@ function get_objects_in_selected(request_id) {
     patcher_dict["boxes"] = boxes;
     patcher_dict["lines"] = lines;
 
-    // use these if no v8:
-    // var results = {"request_id": request_id, "results": patcher_dict}
-    // outlet(1, "response", split_long_string(JSON.stringify(results, null, 2), 2000));
+    // use this if has v8 (chunked to avoid Max 32767 symbol limit):
+    send_chunked_to_v8("add_boxtext", request_id, JSON.stringify(patcher_dict, null, 0));
+}
 
-    // use this if has v8:
-    outlet(2, "add_boxtext", request_id, JSON.stringify(patcher_dict, null, 0));
+function send_chunked_to_v8(action, request_id, json_str) {
+    var MAX_CHUNK = 16000;  // well under Max's 32767 symbol limit
+    if (json_str.length <= MAX_CHUNK) {
+        outlet(2, action, request_id, json_str);
+    } else {
+        var chunks = split_long_string(json_str, MAX_CHUNK);
+        outlet(2, action + "_start", request_id, chunks.length);
+        for (var i = 0; i < chunks.length; i++) {
+            outlet(2, action + "_chunk", chunks[i]);
+        }
+        outlet(2, action + "_end");
+    }
 }
 
 function collect_objects(obj) {

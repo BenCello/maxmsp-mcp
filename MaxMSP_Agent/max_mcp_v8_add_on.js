@@ -22,6 +22,12 @@ function split_long_string(inString, maxLength) {
 }
 
 
+// Chunked transfer buffer for large JSON strings
+var chunk_buffer = "";
+var chunk_request_id = "";
+var chunk_expected = 0;
+var chunk_action = "";
+
 function anything() {
     var a = arrayfromargs(messagename, arguments);
     switch (messagename) {
@@ -31,6 +37,21 @@ function anything() {
                 return;
             }
             add_boxtext(arguments[0], arguments[1]);
+            break;
+        case "add_boxtext_start":
+            chunk_request_id = arguments[0];
+            chunk_expected = arguments[1];
+            chunk_buffer = "";
+            chunk_action = "add_boxtext";
+            break;
+        case "add_boxtext_chunk":
+            chunk_buffer += arguments[0];
+            break;
+        case "add_boxtext_end":
+            add_boxtext(chunk_request_id, chunk_buffer);
+            chunk_buffer = "";
+            chunk_request_id = "";
+            chunk_expected = 0;
             break;
         case "autofit_v8":
             if (arguments.length < 1) {
@@ -60,8 +81,13 @@ function anything() {
 }
 
 function add_boxtext(request_id, data){
-    // post(patcher_dict + "\n");
     var patcher_dict = safe_parse_json(data);
+    if (!patcher_dict) {
+        post("add_boxtext: failed to parse JSON (length=" + data.length + ")\n");
+        var result = {"request_id": request_id, "results": {"error": "Failed to parse patcher dictionary"}};
+        outlet(1, "response", JSON.stringify(result));
+        return;
+    }
     var p = this.patcher;
 
     patcher_dict.boxes.forEach(function (b) {
